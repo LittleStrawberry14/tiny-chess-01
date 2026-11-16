@@ -1,30 +1,47 @@
-# tiny-chess-01 starter
+# tiny-chess-01: a 4,096-byte alpha-beta chess engine
 
-A working entry to fork: `main.py` plays every game through the env and
-picks the move that captures the most valuable piece. It is a template,
-not a contender. Replace its one-line choice with a real search.
+`main.py` is a complete chess engine in **4,089 bytes** of Python (the
+payload is lzma-compressed and unpacked by a one-line stub; the
+decompressed engine is plain Python 3 stdlib). It plays the 8-game
+gauntlet through the env at `MAKEFUN_ENV_URL`.
 
-## The size rule
+## The engine
 
-- `main.py` is the whole engine: at most 4,096 bytes as committed,
-  Python 3.13, standard library only. It reads, imports or execs no other
-  file in the repository.
-- Every byte counts: comments, whitespace, docstrings.
-- Compression is allowed and counted. A `main.py` that unpacks and execs
-  a compressed payload (`lzma`, `zlib`) is fine; the payload and the
-  unpacker are both part of its 4,096 bytes.
-- The rest of the tree (this README, LICENSE) is at most 8,192 bytes in
-  all, and no file over 4,096. MIT, BSD, ISC and 0BSD licences fit.
-- Search to a fixed depth or node count, never a clock: a final
-  contender's trials are replayed and must play the same moves.
+- **Board** — 0x88 mailbox, pieces as `color<<3 | type`.
+- **Search** — iterative deepening over a per-move node budget,
+  alpha-beta with a transposition table (131,072 four-tuple slots,
+  always-replace), null-move pruning (R=3, skipped in pawn/king-only
+  endings), quiescence search with full evasion generation when in
+  check, and MVV-LVA capture ordering. The root only commits a move
+  after a depth completes, so a node-budget abort mid-depth falls back
+  to the previous depth's choice instead of a one-move sample, and
+  moves that repeat a position in the last 20 pairs score 0.
+- **Evaluation** — incremental material + piece-square tables
+  (hand-tuned), tapered king safety (midgame file shelter, endgame
+  centralization) and a bishop-pair bonus, all updated in `make`/
+  `unmake` so a leaf eval is one arithmetic pass.
+- **Determinism** — fixed node budgets derived from a per-trial bank
+  (15M nodes split across the remaining moves, clamped to 12k–90k per
+  move). No wall clock, no unseeded randomness: replayed trials play
+  the same moves.
+- **Correctness** — move generation matches standard perft to depth
+  3–4 on the six reference positions (with queen-only promotions,
+  verified against `python-chess`), including ep pins and castling
+  legality. Promotions are queen-only; under-promotions were cut for
+  size, not correctness.
 
-## Grade it locally
+## Playing through the env
 
-You need Docker and the `makefun` CLI. Download the competition's dev
-kit, unpack it, and from inside it run:
+`main.py` reads only `MAKEFUN_ENV_URL`, POSTs `/game` until the trial
+is done, thinks, POSTs `/move`, and resends `legal_moves[0]` if a move
+is ever refused. Anything unexpected inside the search falls back to a
+legal move rather than losing the game.
 
-    makefun grade-local --kit . --bot <your repository> --driver docker
+## Local checks
 
-It plays one practice trial against the house engines, replays it, and
-prints the Elo the scorer gives it. Before you submit, `makefun check`
-runs the site's own pre-submit checks, size caps included.
+The unpacked engine passes the full perft suite (start, Kiwipete,
+position 3–6, queen-only counts confirmed with python-chess), finds
+mate-in-1/mate-in-2, and keeps per-move search time under ~6.5 s on the
+calibrated CPU at the 90k-node cap.
+
+MIT license. Built for the make.fun tiny-chess-01 bounty.
