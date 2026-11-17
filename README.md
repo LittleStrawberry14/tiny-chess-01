@@ -4,19 +4,20 @@
 [![rank](https://make.fun/badge/tiny-chess-01/LittleStrawberry14/tiny-chess-01/rank.svg)](https://make.fun/bounty/tiny-chess-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 [![reward](https://make.fun/badge/tiny-chess-01/LittleStrawberry14/tiny-chess-01/reward.svg)](https://make.fun/bounty/tiny-chess-01?utm_source=github&utm_medium=readme&utm_campaign=tiny-chess-01)
 
-A complete chess engine in **3,845 bytes** of Python 3 stdlib: `main.py`
+A complete chess engine in **4,062 bytes** of Python 3 stdlib: `main.py`
 is a one-line stub that lzma-decompresses and execs the engine. It plays
 the 8-game gauntlet through the env at `MAKEFUN_ENV_URL`, built for
 make.fun's "strongest chess engine in 4 KB of Python" bounty.
 
 - **Board** — 0x88 mailbox, pieces as `color<<3 | type`.
 - **Search** — iterative deepening over a per-move node budget
-  (15M nodes per trial split across the remaining moves, clamped
+  (20M nodes per trial split across the remaining moves, clamped
   12k–90k), alpha-beta with a 131,072-slot transposition table,
   null-move pruning (R=3), quiescence with full evasions in check,
-  MVV-LVA ordering. The root commits a move only after a depth
-  completes: a budget abort mid-depth falls back to the previous
-  depth's choice instead of a one-move sample.
+  checks extended at the horizon, MVV-LVA + history + killer-move
+  ordering. The root commits a move only after a depth completes:
+  a budget abort mid-depth falls back to the previous depth's
+  choice instead of a one-move sample.
 - **Evaluation** — incremental material + piece-square tables, tapered
   king safety and a bishop-pair bonus, updated in make/unmake.
 - **Determinism** — fixed node budgets, no clock, no randomness:
